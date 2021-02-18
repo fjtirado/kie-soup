@@ -18,7 +18,6 @@ package org.dashbuilder.dataprovider.sql;
 import java.sql.Clob;
 import java.sql.Connection;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -667,11 +666,16 @@ public class SQLDataSetProvider implements DataSetProvider, DataSetDefRegistryLi
                     _appendFrom(def, _query);
 
                     // Row limits
-                    if (trim && postProcessingOps.isEmpty()) {
-                        if(def.isEstimateSize()) {
-                            totalRows = _query.fetchCount();
+                    if (trim) {
+                        if (postProcessingOps.isEmpty()) {
+                            if (def.isEstimateSize()) {
+                                totalRows = _query.fetchCount();
+                            }
+                            _query.limit(lookup.getNumberOfRows()).offset(lookup.getRowOffset());
+                        } else {
+                            _query = SQLFactory.select(conn).columns(new Column("*")).from(_query.getSQL()).limit(lookup
+                                    .getNumberOfRows()).offset(lookup.getRowOffset());
                         }
-                        _query.limit(lookup.getNumberOfRows()).offset(lookup.getRowOffset());
                     }
 
                     // Fetch the results and build the data set
@@ -730,12 +734,16 @@ public class SQLDataSetProvider implements DataSetProvider, DataSetDefRegistryLi
                     }
 
                     // ... and the row limits.
-                    // If post-processing then defer the trim operation in order to not leave out rows
-                    if (trim && postProcessingOps.isEmpty()) {
-                        if (def.isEstimateSize()) {
-                            totalRows = _query.fetchCount();
+                    if (trim) {
+                        if (postProcessingOps.isEmpty()) {
+                            if (def.isEstimateSize()) {
+                                totalRows = _query.fetchCount();
+                            }
+                            _query.limit(lookup.getNumberOfRows()).offset(lookup.getRowOffset());
+                        } else {
+                            _query = SQLFactory.select(conn).columns(new Column("*")).from(_query.getSQL()).limit(lookup
+                                    .getNumberOfRows()).offset(lookup.getRowOffset());
                         }
-                        _query.limit(lookup.getNumberOfRows()).offset(lookup.getRowOffset());
                     }
 
                     // Fetch the results and build the data set
@@ -1132,7 +1140,6 @@ public class SQLDataSetProvider implements DataSetProvider, DataSetDefRegistryLi
             // Some operations requires some in-memory post-processing
             if (!postProcessingOps.isEmpty()) {
                 dataSet = opEngine.execute(dataSet, postProcessingOps);
-                dataSet = dataSet.trim(lookup.getRowOffset(), lookup.getNumberOfRows());
                 dataSet.setUUID(def.getUUID());
                 dataSet.setDefinition(def);
             }
